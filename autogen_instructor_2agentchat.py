@@ -81,54 +81,11 @@ class InstructorModelClient:
         # response_model = None
         response_model = Person
 
-        complete_response = client.chat.completions.create(model=my_model,messages=params["messages"],response_model=response_model, max_retries=4)
+        #complete_response contains the full response Autogen needs
+        answer, complete_response = client.chat.completions.create_with_completion(model=my_model,messages=params["messages"],response_model=response_model, max_retries=4)
         
-        if not response_model:
-           return complete_response
-
-        # If we don't use a response model, autogen is fine with the result
-        # but with a response model, it won't work, so we have to build a
-        # response Autogen won't choke on...
-
-        current_time = int(time.time())
-
-        # Create the response object with custom values
-        response = {
-            "choices": [
-              {
-               "finish_reason": "stop",
-               "index": 0,
-               "message": {
-                 "content": complete_response.model_dump_json(indent=2), 
-                 "role": "assistant"
-               },
-               "logprobs": None
-              }
-            ],
-            "created": current_time,
-            "id": f"instructor{request_time}",
-            "model": my_model,
-            "object": "chat.completion",
-            "usage": {
-               "completion_tokens": 0,
-               "prompt_tokens": 0,
-               "total_tokens": 0
-            },
-            "cost": 0,
-        }
-
-        #solves the annoying bug that response.cost doesn't work in autogen,
-        #  if we pass back the response model as a dict, autogen dislikes the result, so objectify it.
-        class DictObj:
-          def __init__(self, in_dict:dict):
-            assert isinstance(in_dict, dict)
-            for key, val in in_dict.items():
-               if isinstance(val, (list, tuple)):
-                  setattr(self, key, [DictObj(x) if isinstance(x, dict) else x for x in val])
-               else:
-                  setattr(self, key, DictObj(val) if isinstance(val, dict) else val)
-
-        return DictObj(response)
+        return complete_response
+        
 
     # these are to fill out the Class, and required by Autogen
     def message_retrieval(self, response):
